@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>首页 - 我的博客</title>
+  <link rel="stylesheet" href="assets/base.css">
+</head>
+<body>
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main id="main">
+      <h1>最近在写</h1>
+      <div class="post-grid" id="post-grid"></div>
+    </main>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var grid = document.getElementById("post-grid");
+      var posts = DB.getPosts().slice().sort(function (a, b) {
+        return (b.date || "").localeCompare(a.date || "");
+      });
+      if (!posts.length) {
+        grid.innerHTML = '<p style="color:var(--muted);grid-column:1/-1;padding:2rem 0">还没有文章，去 <a href="admin.html" style="color:var(--accent)">管理</a> 写第一篇吧。</p>';
+        return;
+      }
+      grid.innerHTML = posts.map(function (p) {
+        return '<a class="post-card" href="post.html?slug=' + encodeURIComponent(p.slug) + '">' +
+          '<div class="cover ' + (p.cover || "v1") + '">' + (p.cover && p.cover.indexOf("v") === 0 ? "📄" : "") + '</div>' +
+          '<div class="card-body">' +
+            '<div class="card-title">' + DB.esc(p.title) + '</div>' +
+            '<div class="card-desc">' + DB.esc(p.desc || "") + '</div>' +
+            '<div class="card-meta">' + DB.esc(p.uploader || "") + ' · ' + DB.esc(p.date || "") + '</div>' +
+          '</div>' +
+        '</a>';
+      }).join("");
+    });
+  </script>
+</body>
+</html>

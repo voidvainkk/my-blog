@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>归档 - 我的博客</title>
+  <link rel="stylesheet" href="assets/base.css">
+</head>
+<body>
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main id="main">
+      <h1>归档</h1>
+      <div id="archive"></div>
+    </main>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var wrap = document.getElementById("archive");
+      var posts = DB.getPosts().slice().sort(function (a, b) {
+        return (b.date || "").localeCompare(a.date || "");
+      });
+      var byYear = {};
+      posts.forEach(function (p) {
+        var y = (p.date || "").slice(0, 4) || "未知";
+        (byYear[y] = byYear[y] || []).push(p);
+      });
+      var years = Object.keys(byYear).sort().reverse();
+      if (!years.length) { wrap.innerHTML = '<p style="color:var(--muted)">还没有文章。</p>'; return; }
+      wrap.innerHTML = years.map(function (y) {
+        var rows = byYear[y].map(function (p) {
+          var md = (p.date || "").slice(5).replace("-", "/");
+          return '<a href="post.html?slug=' + encodeURIComponent(p.slug) + '">' +
+            '<span class="arch-title">' + DB.esc(p.title) + '</span>' +
+            '<time>' + md + '</time></a>';
+        }).join("");
+        return '<div class="year-block"><h2>' + y + '</h2><div class="arch-list">' + rows + '</div></div>';
+      }).join("");
+    });
+  </script>
+</body>
+</html>

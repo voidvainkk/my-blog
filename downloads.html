@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>下载 - 我的博客</title>
+  <link rel="stylesheet" href="assets/base.css">
+</head>
+<body>
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main id="main">
+      <h1>下载</h1>
+      <div class="dl-grid" id="download-list"></div>
+    </main>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var box = document.getElementById("download-list");
+      var list = DB.getDownloads();
+      if (!list.length) {
+        box.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem 0">暂无下载内容</p>';
+        return;
+      }
+      box.innerHTML = list.map(function (d) {
+        var when = d.date ? new Date(d.date).toLocaleDateString("zh-CN") : "";
+        return '<div class="dl-card">' +
+          '<div class="dl-icon">📦</div>' +
+          '<div class="dl-main">' +
+            '<div class="dl-name">' + DB.esc(d.name) + '</div>' +
+            (d.description ? '<div class="dl-desc">' + DB.esc(d.description) + '</div>' : '') +
+            '<div class="dl-size">' + DB.fmtSize(d.size || 0) + ' · ' + when + '</div>' +
+          '</div>' +
+          '<a class="dl-btn" href="' + DB.esc(d.href || "#") + '"' + (d.href && d.href !== "#" ? ' download' : '') + '>下载</a>' +
+        '</div>';
+      }).join("");
+    });
+  </script>
+</body>
+</html>

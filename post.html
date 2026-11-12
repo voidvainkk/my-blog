@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>文章 - 我的博客</title>
+  <link rel="stylesheet" href="assets/base.css">
+</head>
+<body>
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main id="main">
+      <div id="article"></div>
+    </main>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var box = document.getElementById("article");
+      var slug = new URLSearchParams(location.search).get("slug");
+      var p = slug ? DB.getPost(slug) : null;
+      if (!p) {
+        box.innerHTML = '<div class="article-head"><h1>找不到这篇文章</h1></div>' +
+          '<p style="color:var(--muted)">它可能被删掉了，或者链接不对。</p>' +
+          '<a class="back" href="index.html">← 回首页</a>';
+        return;
+      }
+      document.title = p.title + " - 我的博客";
+      box.innerHTML =
+        '<div class="article-head">' +
+          '<h1>' + DB.esc(p.title) + '</h1>' +
+          '<div class="card-meta">' + DB.esc(p.uploader || "") + ' · ' + DB.esc(p.date || "") + '</div>' +
+        '</div>' +
+        '<div class="prose">' + (p.content || "") + '</div>' +
+        '<a class="back" href="index.html">← 回首页</a>';
+    });
+  </script>
+</body>
+</html>

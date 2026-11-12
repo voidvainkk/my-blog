@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>管理 - 我的博客</title>
+  <link rel="stylesheet" href="assets/base.css">
+  <style>
+    .admin-tabs { display:flex; gap:0.5rem; margin-bottom:1.25rem; flex-wrap:wrap; }
+    .admin-tabs button { padding:0.45rem 1rem; border:1px solid var(--line); background:var(--surface); border-radius:8px; cursor:pointer; font:inherit; font-size:0.9rem; color:var(--muted); }
+    .admin-tabs button.active { background:var(--accent-soft); color:var(--accent); border-color:var(--accent); }
+    .admin-row { display:flex; align-items:center; gap:0.75rem; padding:0.7rem 0.9rem; background:var(--surface); border:1px solid var(--line); border-radius:8px; margin-bottom:0.5rem; }
+    .admin-row .grow { flex:1; min-width:0; }
+    .admin-row .t { font-weight:600; font-size:0.95rem; }
+    .admin-row .s { color:var(--muted); font-size:0.78rem; }
+    .mini { font-size:0.78rem; padding:0.3rem 0.7rem; border-radius:6px; cursor:pointer; border:1px solid var(--line); background:var(--bg); font:inherit; }
+    .mini.danger { color:var(--danger); }
+    .panel { display:none; }
+    .panel.active { display:block; }
+    .note { color:var(--muted); font-size:0.82rem; margin-bottom:1rem; line-height:1.6; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; }
+    .grid2 .full { grid-column:1/-1; }
+    @media(max-width:640px){ .grid2{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main id="main">
+      <h1>管理</h1>
+      <p class="note">
+        这是纯前端的管理面板：改动只保存在<b>本浏览器</b>（localStorage），不会同步给别人。
+        要改成"所有人都能看到"的真实后台，需要接 Cloudflare Pages Functions + D1 数据库。
+      </p>
+
+      <div class="admin-tabs">
+        <button data-tab="posts" class="active">文章</button>
+        <button data-tab="downloads">下载</button>
+        <button data-tab="data">留言板 / 数据</button>
+      </div>
+
+      <!-- 文章 -->
+      <div class="panel active" id="panel-posts">
+        <div id="post-list"></div>
+        <div class="form-box" style="margin-top:1rem">
+          <h3>新增文章</h3>
+          <div class="grid2">
+            <input class="input" id="p-title" placeholder="标题">
+            <input class="input" id="p-slug" placeholder="链接标识（英文，如 my-post）">
+            <input class="input full" id="p-desc" placeholder="摘要">
+            <input class="input" id="p-uploader" placeholder="作者">
+            <input class="input" id="p-date" type="date">
+            <textarea class="input full" id="p-content" rows="5" placeholder="正文 HTML，例如 <p>段落</p><h2>小标题</h2>"></textarea>
+          </div>
+          <div id="p-msg" class="form-msg" style="margin-top:0.6rem"></div>
+          <button class="btn btn-primary" id="p-add" style="margin-top:0.6rem">添加</button>
+        </div>
+      </div>
+
+      <!-- 下载 -->
+      <div class="panel" id="panel-downloads">
+        <div id="dl-list"></div>
+        <div class="form-box" style="margin-top:1rem">
+          <h3>新增下载项</h3>
+          <div class="grid2">
+            <input class="input" id="d-name" placeholder="名称">
+            <input class="input" id="d-size" type="number" placeholder="大小（字节，可留空）">
+            <input class="input full" id="d-desc" placeholder="说明">
+            <input class="input full" id="d-href" placeholder="下载链接（可留空）">
+            <input class="input" id="d-date" type="date">
+          </div>
+          <div id="d-msg" class="form-msg" style="margin-top:0.6rem"></div>
+          <button class="btn btn-primary" id="d-add" style="margin-top:0.6rem">添加</button>
+        </div>
+      </div>
+
+      <!-- 数据 -->
+      <div class="panel" id="panel-data">
+        <h3 style="font-size:1rem;margin-bottom:0.6rem">留言（<span id="fp-count">0</span> 条）</h3>
+        <div id="fp-admin"></div>
+        <h3 style="font-size:1rem;margin:1.5rem 0 0.6rem">危险操作</h3>
+        <button class="btn btn-ghost" id="reset-all" style="color:var(--danger)">清空本浏览器全部数据（恢复初始）</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      /* tabs */
+      document.querySelectorAll(".admin-tabs button").forEach(function (b) {
+        b.addEventListener("click", function () {
+          document.querySelectorAll(".admin-tabs button").forEach(function (x) { x.classList.remove("active"); });
+          document.querySelectorAll(".panel").forEach(function (x) { x.classList.remove("active"); });
+          b.classList.add("active");
+          document.getElementById("panel-" + b.dataset.tab).classList.add("active");
+        });
+      });
+
+      /* ---- 文章 ---- */
+      function renderPosts() {
+        var list = DB.getPosts();
+        var box = document.getElementById("post-list");
+        box.innerHTML = list.map(function (p, i) {
+          return '<div class="admin-row">' +
+            '<div class="grow"><div class="t">' + DB.esc(p.title) + '</div>' +
+            '<div class="s">' + DB.esc(p.slug) + ' · ' + DB.esc(p.date || "") + '</div></div>' +
+            '<button class="mini danger" data-del-post="' + DB.esc(p.slug) + '">删除</button>' +
+          '</div>';
+        }).join("") || '<p class="note">还没有文章。</p>';
+        box.querySelectorAll("[data-del-post]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            DB.setPosts(DB.getPosts().filter(function (p) { return p.slug !== btn.dataset.delPost; }));
+            renderPosts();
+          });
+        });
+      }
+      document.getElementById("p-add").addEventListener("click", function () {
+        var title = document.getElementById("p-title").value.trim();
+        var slug = document.getElementById("p-slug").value.trim();
+        var msg = document.getElementById("p-msg");
+        if (!title || !slug) { msg.className = "form-msg err"; msg.textContent = "标题和链接标识必填"; return; }
+        if (DB.getPost(slug)) { msg.className = "form-msg err"; msg.textContent = "这个链接标识已存在"; return; }
+        var list = DB.getPosts().slice();
+        list.push({
+          slug: slug, title: title,
+          desc: document.getElementById("p-desc").value.trim(),
+          cover: "v" + ((list.length % 4) + 1),
+          uploader: document.getElementById("p-uploader").value.trim() || "站长",
+          date: document.getElementById("p-date").value || new Date().toISOString().slice(0, 10),
+          content: document.getElementById("p-content").value || "<p>（正文待补充）</p>",
+        });
+        DB.setPosts(list);
+        ["p-title","p-slug","p-desc","p-content"].forEach(function (id) { document.getElementById(id).value = ""; });
+        msg.className = "form-msg ok"; msg.textContent = "已添加";
+        renderPosts();
+      });
+
+      /* ---- 下载 ---- */
+      function renderDl() {
+        var list = DB.getDownloads();
+        var box = document.getElementById("dl-list");
+        box.innerHTML = list.map(function (d) {
+          return '<div class="admin-row">' +
+            '<div class="grow"><div class="t">' + DB.esc(d.name) + '</div>' +
+            '<div class="s">' + DB.fmtSize(d.size || 0) + ' · ' + DB.esc(d.date || "") + '</div></div>' +
+            '<button class="mini danger" data-del-dl="' + DB.esc(d.id) + '">删除</button>' +
+          '</div>';
+        }).join("") || '<p class="note">还没有下载项。</p>';
+        box.querySelectorAll("[data-del-dl]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            DB.setDownloads(DB.getDownloads().filter(function (d) { return d.id !== btn.dataset.delDl; }));
+            renderDl();
+          });
+        });
+      }
+      document.getElementById("d-add").addEventListener("click", function () {
+        var name = document.getElementById("d-name").value.trim();
+        var msg = document.getElementById("d-msg");
+        if (!name) { msg.className = "form-msg err"; msg.textContent = "名称必填"; return; }
+        var list = DB.getDownloads().slice();
+        list.push({
+          id: "dl-" + Date.now().toString(36),
+          name: name,
+          description: document.getElementById("d-desc").value.trim(),
+          size: parseInt(document.getElementById("d-size").value, 10) || 0,
+          href: document.getElementById("d-href").value.trim() || "#",
+          date: document.getElementById("d-date").value || new Date().toISOString().slice(0, 10),
+        });
+        DB.setDownloads(list);
+        ["d-name","d-size","d-desc","d-href"].forEach(function (id) { document.getElementById(id).value = ""; });
+        msg.className = "form-msg ok"; msg.textContent = "已添加";
+        renderDl();
+      });
+
+      /* ---- 数据 ---- */
+      function renderData() {
+        var fps = DB.getFootprints();
+        document.getElementById("fp-count").textContent = fps.length;
+        var fpBox = document.getElementById("fp-admin");
+        fpBox.innerHTML = fps.map(function (f) {
+          return '<div class="admin-row"><div class="grow"><div class="t">' + DB.esc(f.username) + '</div>' +
+            '<div class="s">' + DB.esc(f.message) + '</div></div>' +
+            '<button class="mini danger" data-del-fp="' + DB.esc(f.id) + '">删除</button></div>';
+        }).join("") || '<p class="note">还没有留言。</p>';
+        fpBox.querySelectorAll("[data-del-fp]").forEach(function (btn) {
+          btn.addEventListener("click", function () { DB.delFootprint(btn.dataset.delFp); renderData(); });
+        });
+      }
+
+      document.getElementById("reset-all").addEventListener("click", function () {
+        if (!confirm("确定清空本浏览器里所有改动（文章/下载/留言）？")) return;
+        Object.keys(DB.LS).forEach(function (k) { localStorage.removeItem(DB.LS[k]); });
+        renderPosts(); renderDl(); renderData();
+        alert("已恢复初始数据");
+      });
+
+      renderPosts();
+      renderDl();
+      renderData();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>留言板 - 我的博客</title>
+  <link rel="stylesheet" href="assets/base.css">
+</head>
+<body>
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main id="main">
+      <h1 style="text-align:center">留言板</h1>
+      <div class="fp-grid" id="footprint-list"></div>
+
+      <div class="form-box">
+        <h3>写留言</h3>
+        <div class="form-group">
+          <label>头像（可选）</label>
+          <input type="file" id="fp-avatar" accept="image/*" style="font-size:0.85rem">
+        </div>
+        <div class="form-group">
+          <input type="text" id="fp-username" class="input" placeholder="你的昵称" maxlength="30">
+        </div>
+        <div class="form-group">
+          <label>昵称颜色</label>
+          <div class="color-picker" id="color-picker">
+            <button type="button" class="color-btn active" data-color="#1f2328" style="background:#1f2328"></button>
+            <button type="button" class="color-btn" data-color="#cf222e" style="background:#cf222e"></button>
+            <button type="button" class="color-btn" data-color="#d97706" style="background:#d97706"></button>
+            <button type="button" class="color-btn" data-color="#db2777" style="background:#db2777"></button>
+            <button type="button" class="color-btn" data-color="#7c3aed" style="background:#7c3aed"></button>
+            <button type="button" class="color-btn" data-color="#0969da" style="background:#0969da"></button>
+            <button type="button" class="color-btn" data-color="#1a7f37" style="background:#1a7f37"></button>
+          </div>
+        </div>
+        <div class="form-group">
+          <textarea id="fp-message" class="input" placeholder="说点什么..." maxlength="500" rows="3"></textarea>
+        </div>
+        <div id="fp-msg"></div>
+        <button class="btn btn-primary" id="fp-submit">发表留言</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var listEl = document.getElementById("footprint-list");
+      var avEl = document.getElementById("fp-avatar");
+      var nameEl = document.getElementById("fp-username");
+      var msgEl = document.getElementById("fp-message");
+      var submit = document.getElementById("fp-submit");
+      var out = document.getElementById("fp-msg");
+      var color = "#1f2328";
+
+      function render() {
+        var list = DB.getFootprints();
+        if (!list.length) {
+          listEl.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem 0;grid-column:1/-1">还没有留言，来写第一条吧。</p>';
+          return;
+        }
+        listEl.innerHTML = list.map(function (f) {
+          var ava = f.avatar
+            ? '<img src="' + DB.esc(f.avatar) + '" alt="">'
+            : '<div class="fp-ava">' + DB.esc((f.username || "?")[0]) + '</div>';
+          return '<div class="fp-card">' + ava +
+            '<div class="fp-name" style="color:' + DB.esc(f.color || "#1f2328") + '">' + DB.esc(f.username) + '</div>' +
+            '<p class="fp-msg">' + DB.esc(f.message) + '</p>' +
+          '</div>';
+        }).join("");
+      }
+
+      document.getElementById("color-picker").addEventListener("click", function (e) {
+        var b = e.target.closest(".color-btn");
+        if (!b) return;
+        document.querySelectorAll(".color-btn").forEach(function (x) { x.classList.remove("active"); });
+        b.classList.add("active");
+        color = b.dataset.color;
+      });
+
+      submit.addEventListener("click", function () {
+        var name = nameEl.value.trim();
+        var msg = msgEl.value.trim();
+        if (!name || !msg) {
+          out.className = "form-msg err";
+          out.textContent = "请填写昵称和留言";
+          return;
+        }
+        out.className = "form-msg";
+        out.textContent = "";
+
+        function done(avatar) {
+          DB.addFootprint({ username: name, message: msg, color: color, avatar: avatar || "" });
+          nameEl.value = ""; msgEl.value = ""; avEl.value = "";
+          out.className = "form-msg ok";
+          out.textContent = "留言成功！（数据保存在本浏览器）";
+          render();
+        }
+
+        var file = avEl.files && avEl.files[0];
+        if (file) {
+          var reader = new FileReader();
+          reader.onload = function () { done(reader.result); };
+          reader.readAsDataURL(file);
+        } else {
+          done("");
+        }
+      });
+
+      render();
+    });
+  </script>
+</body>
+</html>
