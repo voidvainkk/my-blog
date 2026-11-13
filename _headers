@@ -1,0 +1,15 @@
+# Cloudflare Pages 响应头配置
+# 说明：assets 下的文件在 HTML 里带内容哈希版本号 ?v=xxxxxxxx，内容一变 URL 就变，
+# 所以可以长期强缓存；HTML 本身每次回源校验，保证手机能拿到最新的资源引用。
+
+# 1) 默认：所有资源都让浏览器每次回源校验（避免拿到旧 HTML）
+/*
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# 2) assets 覆盖上面的规则：内容哈希指纹 → 一年强缓存
+#    （先 ! 脱开 /* 给的值，再设自己的，避免两个 max-age 被逗号拼接冲突）
+/assets/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
