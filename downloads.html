@@ -17,26 +17,33 @@
 
   <script src="assets/data.js"></script>
   <script src="assets/app.js"></script>
+  <script src="assets/effects.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       var box = document.getElementById("download-list");
-      var list = DB.getDownloads();
-      if (!list.length) {
-        box.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem 0">暂无下载内容</p>';
-        return;
-      }
-      box.innerHTML = list.map(function (d) {
-        var when = d.date ? new Date(d.date).toLocaleDateString("zh-CN") : "";
-        return '<div class="dl-card">' +
-          '<div class="dl-icon">📦</div>' +
-          '<div class="dl-main">' +
-            '<div class="dl-name">' + DB.esc(d.name) + '</div>' +
-            (d.description ? '<div class="dl-desc">' + DB.esc(d.description) + '</div>' : '') +
-            '<div class="dl-size">' + DB.fmtSize(d.size || 0) + ' · ' + when + '</div>' +
-          '</div>' +
-          '<a class="dl-btn" href="' + DB.esc(d.href || "#") + '"' + (d.href && d.href !== "#" ? ' download' : '') + '>下载</a>' +
-        '</div>';
-      }).join("");
+      box.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem 0">加载中…</p>';
+      DB.getDownloads().then(function (list) {
+        if (!list.length) {
+          box.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem 0">暂无下载内容</p>';
+          return;
+        }
+        box.innerHTML = list.map(function (d) {
+          var when = d.date ? new Date(d.date).toLocaleDateString("zh-CN") : "";
+          return '<div class="dl-card">' +
+            '<div class="dl-icon">📦</div>' +
+            '<div class="dl-main">' +
+              '<div class="dl-name">' + DB.esc(d.name) + '</div>' +
+              (d.description ? '<div class="dl-desc">' + DB.esc(d.description) + '</div>' : '') +
+              '<div class="dl-size">' + DB.fmtSize(d.size || 0) + ' · ' + when + '</div>' +
+            '</div>' +
+            '<a class="dl-btn" href="' + DB.esc(d.href || "#") + '"' + (d.href && d.href !== "#" ? ' download' : '') + '>下载</a>' +
+          '</div>';
+        }).join("");
+        if (window.initReveal) window.initReveal();
+        if (window.initSpotlight) window.initSpotlight();
+      }).catch(function (e) {
+        box.innerHTML = '<p style="color:var(--danger);text-align:center;padding:2rem 0">加载失败：' + DB.esc(e.message) + '</p>';
+      });
     });
   </script>
 </body>

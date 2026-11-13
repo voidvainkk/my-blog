@@ -8,8 +8,9 @@
 
   /* ---------- 站点配置：改这里 ---------- */
   window.SITE = {
-    name: "你的名字",                            // 头像下面那一行名字
-    bigTitle: "我的博客",                        // 大标题
+    name: "vainvoidkk",                          // 头像下面那一行名字（像素风显示）
+    avatar: "assets/images/background.jpg",       // 头像图片；留空则用名字首字
+    bigTitle: "",                                // 名字下方的副标题，留空则不显示
     nav: [
       ["首页", "index.html"],
       ["归档", "archive.html"],
@@ -19,7 +20,7 @@
       ["管理", "admin.html"],
     ],
     socials: [                                   // [平台名, 显示值]
-      ["GitHub", "yourname"],
+      ["GitHub", "voidvainkk"],
       ["Bilibili", "yourname"],
       ["SoundCloud", "yourname"],
       ["Dizzylab", "-"],
@@ -66,15 +67,19 @@
       );
     }).join("");
 
+    var avatarHTML = S.avatar
+      ? '<div class="av solo has-img"><img src="' + S.avatar + '" alt="' + (S.name || "") + '"></div>'
+      : '<div class="av solo">' + initial + "</div>";
+
     aside.innerHTML =
       '<div class="sidebar-info">' +
         '<div class="avatar-row single">' +
-          '<div class="av solo">' + initial + "</div>" +
+          avatarHTML +
         "</div>" +
         '<div class="names">' +
-          '<p class="nm-main">' + (S.name || "") + "</p>" +
+          '<p class="nm-main pixel-name" data-text="' + (S.name || "") + '">' + (S.name || "") + "</p>" +
         "</div>" +
-        '<div class="big-title">' + S.bigTitle + "</div>" +
+        (S.bigTitle ? '<div class="big-title">' + S.bigTitle + "</div>" : "") +
       "</div>" +
       "<nav>" + navHTML + "</nav>" +
       '<div class="sidebar-social">' + socialHTML + "</div>";

@@ -16,25 +16,36 @@
 
   <script src="assets/data.js"></script>
   <script src="assets/app.js"></script>
+  <script src="assets/effects.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       var box = document.getElementById("article");
       var slug = new URLSearchParams(location.search).get("slug");
-      var p = slug ? DB.getPost(slug) : null;
-      if (!p) {
+      box.innerHTML = '<p style="color:var(--muted)">加载中…</p>';
+      if (!slug) {
+        renderNotFound();
+        return;
+      }
+      DB.getPost(slug).then(function (p) {
+        if (!p) { renderNotFound(); return; }
+        document.title = p.title + " - 我的博客";
+        box.innerHTML =
+          '<div class="article-head">' +
+            '<h1>' + DB.esc(p.title) + '</h1>' +
+            '<div class="card-meta">' + DB.esc(p.uploader || "") + ' · ' + DB.esc(p.date || "") + '</div>' +
+          '</div>' +
+          '<div class="prose">' + (p.content || "") + '</div>' +
+          '<a class="back" href="index.html">← 回首页</a>';
+        if (window.initReveal) window.initReveal();
+      }).catch(function (e) {
+        box.innerHTML = '<p style="color:var(--danger)">加载失败：' + DB.esc(e.message) + '</p>';
+      });
+
+      function renderNotFound() {
         box.innerHTML = '<div class="article-head"><h1>找不到这篇文章</h1></div>' +
           '<p style="color:var(--muted)">它可能被删掉了，或者链接不对。</p>' +
           '<a class="back" href="index.html">← 回首页</a>';
-        return;
       }
-      document.title = p.title + " - 我的博客";
-      box.innerHTML =
-        '<div class="article-head">' +
-          '<h1>' + DB.esc(p.title) + '</h1>' +
-          '<div class="card-meta">' + DB.esc(p.uploader || "") + ' · ' + DB.esc(p.date || "") + '</div>' +
-        '</div>' +
-        '<div class="prose">' + (p.content || "") + '</div>' +
-        '<a class="back" href="index.html">← 回首页</a>';
     });
   </script>
 </body>

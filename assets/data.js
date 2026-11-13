@@ -1,71 +1,99 @@
 /* ============================================================
-   data.js — 数据层（纯前端模拟后端）
-   已清空示例内容：文章、下载、留言初始都是空的，
-   一切从你添加的第一条开始。
-     · 文章 / 下载：管理页里增删，存在 localStorage
-     · 留言：完全存 localStorage（只在本浏览器可见）
-   以后想多人共享，把这里换成 fetch('/api/...') 即可无缝迁移。
+   data.js — 数据层（对接 Cloudflare Pages Functions + D1）
+   所有读写都走 /api/*，数据存在云端数据库，全站共享。
+   页面用法（异步）：
+     var posts = await DB.getPosts();
+     var p     = await DB.getPost(slug);
+     var list  = await DB.getDownloads();
+     var fps   = await DB.getFootprints();
+     var site  = await DB.getSite();     // { about:{html}, friends:[...] }
+   管理页写操作（需先登录）：
+     await DB.login(pwd) / DB.logout() / DB.me()
+     await DB.savePost(obj) / DB.deletePost(slug)
+     await DB.saveDownload(obj) / DB.deleteDownload(id)
+     await DB.saveSite({about, friends})
+     await DB.delFootprint(id)
+   esc / fmtSize 仍是同步工具函数。
    ============================================================ */
 
 (function () {
   "use strict";
 
-  var LS = {
-    posts: "blog.posts.v1",
-    downloads: "blog.downloads.v1",
-    footprints: "blog.footprints.v1",
-  };
-
-  function load(key, fallback) {
-    try {
-      var raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
-    } catch (e) {
-      return fallback;
+  async function req(url, opts) {
+    opts = opts || {};
+    opts.headers = Object.assign({ "content-type": "application/json" }, opts.headers || {});
+    if (opts.body && typeof opts.body !== "string") opts.body = JSON.stringify(opts.body);
+    var res = await fetch(url, opts);
+    var data = null;
+    try { data = await res.json(); } catch (e) { data = null; }
+    if (!res.ok) {
+      var msg = (data && data.error) || ("请求失败 (" + res.status + ")");
+      var err = new Error(msg);
+      err.status = res.status;
+      throw err;
     }
+    return data || {};
   }
-  function save(key, val) {
-    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
-  }
-  function uid() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-  }
-
-  /* ---------------- 种子：文章（已清空） ---------------- */
-  var SEED_POSTS = [];
-
-  /* ---------------- 种子：下载（已清空） ---------------- */
-  var SEED_DOWNLOADS = [];
 
   /* ---------------- 文章 ---------------- */
-  function getPosts() {
-    var override = load(LS.posts, null);
-    return override || SEED_POSTS;
+  async function getPosts() {
+    var d = await req("/api/posts");
+    return d.posts || [];
   }
-  function setPosts(list) { save(LS.posts, list); }
-  function getPost(slug) {
-    return getPosts().filter(function (p) { return p.slug === slug; })[0] || null;
+  async function getPost(slug) {
+    var d = await req("/api/posts?slug=" + encodeURIComponent(slug));
+    return d.post || null;
+  }
+  async function savePost(p) {
+    return req("/api/posts", { method: "POST", body: p });
+  }
+  async function deletePost(slug) {
+    return req("/api/posts?slug=" + encodeURIComponent(slug), { method: "DELETE" });
   }
 
   /* ---------------- 下载 ---------------- */
-  function getDownloads() {
-    var override = load(LS.downloads, null);
-    return override || SEED_DOWNLOADS;
+  async function getDownloads() {
+    var d = await req("/api/downloads");
+    return d.downloads || [];
   }
-  function setDownloads(list) { save(LS.downloads, list); }
+  async function saveDownload(x) {
+    return req("/api/downloads", { method: "POST", body: x });
+  }
+  async function deleteDownload(id) {
+    return req("/api/downloads?id=" + encodeURIComponent(id), { method: "DELETE" });
+  }
 
   /* ---------------- 留言 ---------------- */
-  function getFootprints() { return load(LS.footprints, []); }
-  function addFootprint(fp) {
-    var list = getFootprints();
-    fp.id = uid();
-    fp.time = Date.now();
-    list.unshift(fp);
-    save(LS.footprints, list);
-    return fp;
+  async function getFootprints() {
+    var d = await req("/api/footprints");
+    return d.footprints || [];
   }
-  function delFootprint(id) {
-    save(LS.footprints, getFootprints().filter(function (f) { return f.id !== id; }));
+  async function addFootprint(fp) {
+    return req("/api/footprints", { method: "POST", body: fp });
+  }
+  async function delFootprint(id) {
+    return req("/api/footprints?id=" + encodeURIComponent(id), { method: "DELETE" });
+  }
+
+  /* ---------------- 站点配置（简介/友链） ---------------- */
+  async function getSite() {
+    var d = await req("/api/site");
+    return { about: d.about || { html: "" }, friends: d.friends || [] };
+  }
+  async function saveSite(obj) {
+    return req("/api/site", { method: "POST", body: obj });
+  }
+
+  /* ---------------- 登录 ---------------- */
+  async function login(password) {
+    return req("/api/login", { method: "POST", body: { password: password } });
+  }
+  async function logout() {
+    return req("/api/logout", { method: "POST" });
+  }
+  async function me() {
+    var d = await req("/api/me");
+    return !!(d && d.authed);
   }
 
   /* ---------------- 工具 ---------------- */
@@ -75,16 +103,21 @@
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
   function fmtSize(b) {
+    b = Number(b) || 0;
     if (b < 1024) return b + " B";
     if (b < 1024 * 1024) return (b / 1024).toFixed(1) + " KB";
     return (b / 1024 / 1024).toFixed(1) + " MB";
   }
+  function fmtDate(ms) {
+    try { return new Date(Number(ms)).toLocaleString("zh-CN"); } catch (e) { return ""; }
+  }
 
   window.DB = {
-    getPosts, setPosts, getPost,
-    getDownloads, setDownloads,
+    getPosts, getPost, savePost, deletePost,
+    getDownloads, saveDownload, deleteDownload,
     getFootprints, addFootprint, delFootprint,
-    esc, fmtSize,
-    LS,
+    getSite, saveSite,
+    login, logout, me,
+    esc, fmtSize, fmtDate,
   };
 })();

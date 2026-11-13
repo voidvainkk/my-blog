@@ -25,13 +25,13 @@
         <div class="form-group">
           <label>昵称颜色</label>
           <div class="color-picker" id="color-picker">
-            <button type="button" class="color-btn active" data-color="#1f2328" style="background:#1f2328"></button>
-            <button type="button" class="color-btn" data-color="#cf222e" style="background:#cf222e"></button>
-            <button type="button" class="color-btn" data-color="#d97706" style="background:#d97706"></button>
-            <button type="button" class="color-btn" data-color="#db2777" style="background:#db2777"></button>
-            <button type="button" class="color-btn" data-color="#7c3aed" style="background:#7c3aed"></button>
-            <button type="button" class="color-btn" data-color="#0969da" style="background:#0969da"></button>
-            <button type="button" class="color-btn" data-color="#1a7f37" style="background:#1a7f37"></button>
+            <button type="button" class="color-btn active" data-color="#58a6ff" style="background:#58a6ff"></button>
+            <button type="button" class="color-btn" data-color="#3fb950" style="background:#3fb950"></button>
+            <button type="button" class="color-btn" data-color="#d29922" style="background:#d29922"></button>
+            <button type="button" class="color-btn" data-color="#ff7b72" style="background:#ff7b72"></button>
+            <button type="button" class="color-btn" data-color="#bc8cff" style="background:#bc8cff"></button>
+            <button type="button" class="color-btn" data-color="#39c5cf" style="background:#39c5cf"></button>
+            <button type="button" class="color-btn" data-color="#f778ba" style="background:#f778ba"></button>
           </div>
         </div>
         <div class="form-group">
@@ -45,6 +45,7 @@
 
   <script src="assets/data.js"></script>
   <script src="assets/app.js"></script>
+  <script src="assets/effects.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       var listEl = document.getElementById("footprint-list");
@@ -53,23 +54,28 @@
       var msgEl = document.getElementById("fp-message");
       var submit = document.getElementById("fp-submit");
       var out = document.getElementById("fp-msg");
-      var color = "#1f2328";
+      var color = "#58a6ff";
 
       function render() {
-        var list = DB.getFootprints();
-        if (!list.length) {
-          listEl.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem 0;grid-column:1/-1">还没有留言，来写第一条吧。</p>';
-          return;
-        }
-        listEl.innerHTML = list.map(function (f) {
-          var ava = f.avatar
-            ? '<img src="' + DB.esc(f.avatar) + '" alt="">'
-            : '<div class="fp-ava">' + DB.esc((f.username || "?")[0]) + '</div>';
-          return '<div class="fp-card">' + ava +
-            '<div class="fp-name" style="color:' + DB.esc(f.color || "#1f2328") + '">' + DB.esc(f.username) + '</div>' +
-            '<p class="fp-msg">' + DB.esc(f.message) + '</p>' +
-          '</div>';
-        }).join("");
+        listEl.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem 0;grid-column:1/-1">加载中…</p>';
+        DB.getFootprints().then(function (list) {
+          if (!list.length) {
+            listEl.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem 0;grid-column:1/-1">还没有留言，来写第一条吧。</p>';
+            return;
+          }
+          listEl.innerHTML = list.map(function (f) {
+            var ava = f.avatar
+              ? '<img src="' + DB.esc(f.avatar) + '" alt="">'
+              : '<div class="fp-ava">' + DB.esc((f.name || "?")[0]) + '</div>';
+            return '<div class="fp-card">' + ava +
+              '<div class="fp-name" style="color:' + DB.esc(f.color || "#58a6ff") + '">' + DB.esc(f.name) + '</div>' +
+              '<p class="fp-msg">' + DB.esc(f.text) + '</p>' +
+            '</div>';
+          }).join("");
+          if (window.initReveal) window.initReveal();
+        }).catch(function (e) {
+          listEl.innerHTML = '<p style="color:var(--danger);text-align:center;padding:2rem 0;grid-column:1/-1">加载失败：' + DB.esc(e.message) + '</p>';
+        });
       }
 
       document.getElementById("color-picker").addEventListener("click", function (e) {
@@ -80,6 +86,29 @@
         color = b.dataset.color;
       });
 
+      // 把选中图片缩到 96px 以内，压成 JPEG data URL，体积可控
+      function shrinkImage(file, cb) {
+        var reader = new FileReader();
+        reader.onload = function () {
+          var img = new Image();
+          img.onload = function () {
+            var max = 96;
+            var w = img.width, h = img.height;
+            if (w > h) { if (w > max) { h = h * max / w; w = max; } }
+            else { if (h > max) { w = w * max / h; h = max; } }
+            var c = document.createElement("canvas");
+            c.width = Math.max(1, Math.round(w));
+            c.height = Math.max(1, Math.round(h));
+            c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+            try { cb(c.toDataURL("image/jpeg", 0.8)); } catch (e) { cb(""); }
+          };
+          img.onerror = function () { cb(""); };
+          img.src = reader.result;
+        };
+        reader.onerror = function () { cb(""); };
+        reader.readAsDataURL(file);
+      }
+
       submit.addEventListener("click", function () {
         var name = nameEl.value.trim();
         var msg = msgEl.value.trim();
@@ -89,24 +118,26 @@
           return;
         }
         out.className = "form-msg";
-        out.textContent = "";
+        out.textContent = "发送中…";
+        submit.disabled = true;
 
-        function done(avatar) {
-          DB.addFootprint({ username: name, message: msg, color: color, avatar: avatar || "" });
-          nameEl.value = ""; msgEl.value = ""; avEl.value = "";
-          out.className = "form-msg ok";
-          out.textContent = "留言成功！（数据保存在本浏览器）";
-          render();
+        function send(avatar) {
+          DB.addFootprint({ name: name, text: msg, color: color, avatar: avatar || "" })
+            .then(function () {
+              nameEl.value = ""; msgEl.value = ""; avEl.value = "";
+              out.className = "form-msg ok";
+              out.textContent = "留言成功！";
+              render();
+            })
+            .catch(function (e) {
+              out.className = "form-msg err";
+              out.textContent = e.message || "留言失败";
+            })
+            .then(function () { submit.disabled = false; });
         }
 
         var file = avEl.files && avEl.files[0];
-        if (file) {
-          var reader = new FileReader();
-          reader.onload = function () { done(reader.result); };
-          reader.readAsDataURL(file);
-        } else {
-          done("");
-        }
+        if (file) { shrinkImage(file, send); } else { send(""); }
       });
 
       render();

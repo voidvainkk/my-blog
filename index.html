@@ -17,26 +17,35 @@
 
   <script src="assets/data.js"></script>
   <script src="assets/app.js"></script>
+  <script src="assets/effects.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       var grid = document.getElementById("post-grid");
-      var posts = DB.getPosts().slice().sort(function (a, b) {
-        return (b.date || "").localeCompare(a.date || "");
+      grid.innerHTML = '<p style="color:var(--muted);grid-column:1/-1;padding:2rem 0">加载中…</p>';
+      DB.getPosts().then(function (posts) {
+        posts = posts.slice().sort(function (a, b) {
+          return (b.date || "").localeCompare(a.date || "");
+        });
+        if (!posts.length) {
+          grid.innerHTML = '<p style="color:var(--muted);grid-column:1/-1;padding:2rem 0">还没有文章，去 <a href="admin.html" style="color:var(--accent)">管理</a> 写第一篇吧。</p>';
+          return;
+        }
+        grid.innerHTML = posts.map(function (p, i) {
+          var cover = "v" + ((i % 4) + 1);
+          return '<a class="post-card" href="post.html?slug=' + encodeURIComponent(p.slug) + '">' +
+            '<div class="cover ' + cover + '">📄</div>' +
+            '<div class="card-body">' +
+              '<div class="card-title">' + DB.esc(p.title) + '</div>' +
+              '<div class="card-desc">' + DB.esc(p.description || "") + '</div>' +
+              '<div class="card-meta">' + DB.esc(p.uploader || "") + ' · ' + DB.esc(p.date || "") + '</div>' +
+            '</div>' +
+          '</a>';
+        }).join("");
+        if (window.initReveal) window.initReveal();
+        if (window.initSpotlight) window.initSpotlight();
+      }).catch(function (e) {
+        grid.innerHTML = '<p style="color:var(--danger);grid-column:1/-1;padding:2rem 0">加载失败：' + DB.esc(e.message) + '</p>';
       });
-      if (!posts.length) {
-        grid.innerHTML = '<p style="color:var(--muted);grid-column:1/-1;padding:2rem 0">还没有文章，去 <a href="admin.html" style="color:var(--accent)">管理</a> 写第一篇吧。</p>';
-        return;
-      }
-      grid.innerHTML = posts.map(function (p) {
-        return '<a class="post-card" href="post.html?slug=' + encodeURIComponent(p.slug) + '">' +
-          '<div class="cover ' + (p.cover || "v1") + '">' + (p.cover && p.cover.indexOf("v") === 0 ? "📄" : "") + '</div>' +
-          '<div class="card-body">' +
-            '<div class="card-title">' + DB.esc(p.title) + '</div>' +
-            '<div class="card-desc">' + DB.esc(p.desc || "") + '</div>' +
-            '<div class="card-meta">' + DB.esc(p.uploader || "") + ' · ' + DB.esc(p.date || "") + '</div>' +
-          '</div>' +
-        '</a>';
-      }).join("");
     });
   </script>
 </body>

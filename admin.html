@@ -11,9 +11,9 @@
     .admin-tabs button.active { background:var(--accent-soft); color:var(--accent); border-color:var(--accent); }
     .admin-row { display:flex; align-items:center; gap:0.75rem; padding:0.7rem 0.9rem; background:var(--surface); border:1px solid var(--line); border-radius:8px; margin-bottom:0.5rem; }
     .admin-row .grow { flex:1; min-width:0; }
-    .admin-row .t { font-weight:600; font-size:0.95rem; }
-    .admin-row .s { color:var(--muted); font-size:0.78rem; }
-    .mini { font-size:0.78rem; padding:0.3rem 0.7rem; border-radius:6px; cursor:pointer; border:1px solid var(--line); background:var(--bg); font:inherit; }
+    .admin-row .t { font-weight:600; font-size:0.95rem; word-break:break-all; }
+    .admin-row .s { color:var(--muted); font-size:0.78rem; word-break:break-all; }
+    .mini { font-size:0.78rem; padding:0.3rem 0.7rem; border-radius:6px; cursor:pointer; border:1px solid var(--line); background:var(--bg); font:inherit; color:var(--text); }
     .mini.danger { color:var(--danger); }
     .panel { display:none; }
     .panel.active { display:block; }
@@ -21,6 +21,10 @@
     .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; }
     .grid2 .full { grid-column:1/-1; }
     @media(max-width:640px){ .grid2{grid-template-columns:1fr;} }
+    .login-box { max-width:360px; margin:2rem auto; text-align:center; }
+    .friend-row { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:0.5rem; margin-bottom:0.5rem; }
+    @media(max-width:640px){ .friend-row{grid-template-columns:1fr;} }
+    .topbar { display:flex; justify-content:flex-end; margin-bottom:0.5rem; }
   </style>
 </head>
 <body>
@@ -28,67 +32,145 @@
     <aside id="sidebar"></aside>
     <main id="main">
       <h1>管理</h1>
-      <p class="note">
-        这是纯前端的管理面板：改动只保存在<b>本浏览器</b>（localStorage），不会同步给别人。
-        要改成"所有人都能看到"的真实后台，需要接 Cloudflare Pages Functions + D1 数据库。
-      </p>
 
-      <div class="admin-tabs">
-        <button data-tab="posts" class="active">文章</button>
-        <button data-tab="downloads">下载</button>
-        <button data-tab="data">留言板 / 数据</button>
-      </div>
-
-      <!-- 文章 -->
-      <div class="panel active" id="panel-posts">
-        <div id="post-list"></div>
-        <div class="form-box" style="margin-top:1rem">
-          <h3>新增文章</h3>
-          <div class="grid2">
-            <input class="input" id="p-title" placeholder="标题">
-            <input class="input" id="p-slug" placeholder="链接标识（英文，如 my-post）">
-            <input class="input full" id="p-desc" placeholder="摘要">
-            <input class="input" id="p-uploader" placeholder="作者">
-            <input class="input" id="p-date" type="date">
-            <textarea class="input full" id="p-content" rows="5" placeholder="正文 HTML，例如 <p>段落</p><h2>小标题</h2>"></textarea>
-          </div>
-          <div id="p-msg" class="form-msg" style="margin-top:0.6rem"></div>
-          <button class="btn btn-primary" id="p-add" style="margin-top:0.6rem">添加</button>
+      <!-- 未登录：登录框 -->
+      <div id="login-view" style="display:none">
+        <div class="login-box form-box">
+          <h3>站长登录</h3>
+          <p class="note">输入你在 Cloudflare 里设置的管理密码。</p>
+          <input class="input" id="pw" type="password" placeholder="管理密码" style="width:100%">
+          <div id="login-msg" class="form-msg" style="margin-top:0.6rem"></div>
+          <button class="btn btn-primary" id="login-btn" style="margin-top:0.6rem;width:100%">登录</button>
         </div>
       </div>
 
-      <!-- 下载 -->
-      <div class="panel" id="panel-downloads">
-        <div id="dl-list"></div>
-        <div class="form-box" style="margin-top:1rem">
-          <h3>新增下载项</h3>
-          <div class="grid2">
-            <input class="input" id="d-name" placeholder="名称">
-            <input class="input" id="d-size" type="number" placeholder="大小（字节，可留空）">
-            <input class="input full" id="d-desc" placeholder="说明">
-            <input class="input full" id="d-href" placeholder="下载链接（可留空）">
-            <input class="input" id="d-date" type="date">
-          </div>
-          <div id="d-msg" class="form-msg" style="margin-top:0.6rem"></div>
-          <button class="btn btn-primary" id="d-add" style="margin-top:0.6rem">添加</button>
-        </div>
-      </div>
+      <!-- 已登录：后台 -->
+      <div id="admin-view" style="display:none">
+        <div class="topbar"><button class="mini" id="logout-btn">退出登录</button></div>
+        <p class="note">
+          这里的改动会写入云端数据库（D1），<b>所有人打开网站都能看到</b>。
+        </p>
 
-      <!-- 数据 -->
-      <div class="panel" id="panel-data">
-        <h3 style="font-size:1rem;margin-bottom:0.6rem">留言（<span id="fp-count">0</span> 条）</h3>
-        <div id="fp-admin"></div>
-        <h3 style="font-size:1rem;margin:1.5rem 0 0.6rem">危险操作</h3>
-        <button class="btn btn-ghost" id="reset-all" style="color:var(--danger)">清空本浏览器全部数据（恢复初始）</button>
+        <div class="admin-tabs">
+          <button data-tab="posts" class="active">文章</button>
+          <button data-tab="downloads">下载</button>
+          <button data-tab="about">简介</button>
+          <button data-tab="friends">友链</button>
+          <button data-tab="messages">留言板</button>
+        </div>
+
+        <!-- 文章 -->
+        <div class="panel active" id="panel-posts">
+          <div id="post-list"></div>
+          <div class="form-box" style="margin-top:1rem">
+            <h3 id="p-form-title">新增文章</h3>
+            <div class="grid2">
+              <input class="input" id="p-title" placeholder="标题">
+              <input class="input" id="p-slug" placeholder="链接标识（英文，如 my-post）">
+              <input class="input full" id="p-desc" placeholder="摘要">
+              <input class="input" id="p-uploader" placeholder="作者">
+              <input class="input" id="p-date" type="date">
+              <textarea class="input full" id="p-content" rows="6" placeholder="正文 HTML，例如 <p>段落</p><h2>小标题</h2><img src=&quot;assets/images/x.jpg&quot;>"></textarea>
+            </div>
+            <div id="p-msg" class="form-msg" style="margin-top:0.6rem"></div>
+            <div style="margin-top:0.6rem;display:flex;gap:0.5rem">
+              <button class="btn btn-primary" id="p-save">保存文章</button>
+              <button class="btn btn-ghost" id="p-reset" style="display:none">取消编辑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 下载 -->
+        <div class="panel" id="panel-downloads">
+          <div id="dl-list"></div>
+          <div class="form-box" style="margin-top:1rem">
+            <h3 id="d-form-title">新增下载项</h3>
+            <div class="grid2">
+              <input class="input" id="d-name" placeholder="名称">
+              <input class="input" id="d-size" type="number" placeholder="大小（字节，可留空）">
+              <input class="input full" id="d-desc" placeholder="说明">
+              <input class="input full" id="d-href" placeholder="下载链接（可留空）">
+              <input class="input" id="d-date" type="date">
+            </div>
+            <div id="d-msg" class="form-msg" style="margin-top:0.6rem"></div>
+            <div style="margin-top:0.6rem;display:flex;gap:0.5rem">
+              <button class="btn btn-primary" id="d-save">保存下载项</button>
+              <button class="btn btn-ghost" id="d-reset" style="display:none">取消编辑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 简介 -->
+        <div class="panel" id="panel-about">
+          <div class="form-box">
+            <h3>个人简介</h3>
+            <p class="note">支持 HTML，例如 <code>&lt;p&gt;你好&lt;/p&gt;</code>、<code>&lt;img src="assets/images/x.jpg"&gt;</code></p>
+            <textarea class="input" id="about-html" rows="10" style="width:100%"></textarea>
+            <div id="about-msg" class="form-msg" style="margin-top:0.6rem"></div>
+            <button class="btn btn-primary" id="about-save" style="margin-top:0.6rem">保存简介</button>
+          </div>
+        </div>
+
+        <!-- 友链 -->
+        <div class="panel" id="panel-friends">
+          <div class="form-box">
+            <h3>友情链接</h3>
+            <div id="friend-list" style="margin:0.8rem 0"></div>
+            <button class="mini" id="friend-add">+ 添加一行</button>
+            <div id="friend-msg" class="form-msg" style="margin-top:0.6rem"></div>
+            <button class="btn btn-primary" id="friend-save" style="margin-top:0.6rem">保存友链</button>
+          </div>
+        </div>
+
+        <!-- 留言板 -->
+        <div class="panel" id="panel-messages">
+          <h3 style="font-size:1rem;margin-bottom:0.6rem">留言（<span id="fp-count">0</span> 条）</h3>
+          <div id="fp-admin"></div>
+        </div>
       </div>
     </main>
   </div>
 
   <script src="assets/data.js"></script>
   <script src="assets/app.js"></script>
+  <script src="assets/effects.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", function () {
-      /* tabs */
+      var loginView = document.getElementById("login-view");
+      var adminView = document.getElementById("admin-view");
+      var editingPost = null;   // 正在编辑的 slug，null=新增
+      var editingDl = null;     // 正在编辑的下载 id
+
+      function showLogin() { loginView.style.display = "block"; adminView.style.display = "none"; }
+      function showAdmin() { loginView.style.display = "none"; adminView.style.display = "block"; }
+
+      /* ================= 登录 ================= */
+      document.getElementById("login-btn").addEventListener("click", function () {
+        var pw = document.getElementById("pw").value;
+        var msg = document.getElementById("login-msg");
+        msg.className = "form-msg";
+        msg.textContent = "登录中…";
+        DB.login(pw).then(function () {
+          document.getElementById("pw").value = "";
+          enterAdmin();
+        }).catch(function (e) {
+          msg.className = "form-msg err";
+          msg.textContent = e.message || "登录失败";
+        });
+      });
+      document.getElementById("pw").addEventListener("keydown", function (e) {
+        if (e.key === "Enter") document.getElementById("login-btn").click();
+      });
+      document.getElementById("logout-btn").addEventListener("click", function () {
+        DB.logout().then(function () { location.reload(); });
+      });
+
+      function enterAdmin() {
+        showAdmin();
+        loadPosts(); loadDl(); loadAbout(); loadFriends(); loadMessages();
+      }
+
+      /* ================= tabs ================= */
       document.querySelectorAll(".admin-tabs button").forEach(function (b) {
         b.addEventListener("click", function () {
           document.querySelectorAll(".admin-tabs button").forEach(function (x) { x.classList.remove("active"); });
@@ -98,107 +180,231 @@
         });
       });
 
-      /* ---- 文章 ---- */
-      function renderPosts() {
-        var list = DB.getPosts();
+      /* ================= 文章 ================= */
+      var allPosts = [];
+      function loadPosts() {
         var box = document.getElementById("post-list");
-        box.innerHTML = list.map(function (p, i) {
-          return '<div class="admin-row">' +
-            '<div class="grow"><div class="t">' + DB.esc(p.title) + '</div>' +
-            '<div class="s">' + DB.esc(p.slug) + ' · ' + DB.esc(p.date || "") + '</div></div>' +
-            '<button class="mini danger" data-del-post="' + DB.esc(p.slug) + '">删除</button>' +
-          '</div>';
-        }).join("") || '<p class="note">还没有文章。</p>';
-        box.querySelectorAll("[data-del-post]").forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            DB.setPosts(DB.getPosts().filter(function (p) { return p.slug !== btn.dataset.delPost; }));
-            renderPosts();
+        box.innerHTML = '<p class="note">加载中…</p>';
+        DB.getPosts().then(function (list) {
+          allPosts = list;
+          box.innerHTML = list.map(function (p) {
+            return '<div class="admin-row">' +
+              '<div class="grow"><div class="t">' + DB.esc(p.title) + '</div>' +
+              '<div class="s">' + DB.esc(p.slug) + ' · ' + DB.esc(p.date || "") + '</div></div>' +
+              '<button class="mini" data-edit-post="' + DB.esc(p.slug) + '">编辑</button>' +
+              '<button class="mini danger" data-del-post="' + DB.esc(p.slug) + '">删除</button>' +
+            '</div>';
+          }).join("") || '<p class="note">还没有文章。</p>';
+          box.querySelectorAll("[data-del-post]").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              if (!confirm("删除这篇文章？")) return;
+              DB.deletePost(btn.dataset.delPost).then(loadPosts).catch(function (e) { alert(e.message); });
+            });
           });
+          box.querySelectorAll("[data-edit-post]").forEach(function (btn) {
+            btn.addEventListener("click", function () { editPost(btn.dataset.editPost); });
+          });
+        }).catch(function (e) {
+          box.innerHTML = '<p class="note" style="color:var(--danger)">加载失败：' + DB.esc(e.message) + '</p>';
         });
       }
-      document.getElementById("p-add").addEventListener("click", function () {
+      function editPost(slug) {
+        var p = allPosts.filter(function (x) { return x.slug === slug; })[0];
+        if (!p) return;
+        editingPost = slug;
+        document.getElementById("p-title").value = p.title || "";
+        document.getElementById("p-slug").value = p.slug || "";
+        document.getElementById("p-desc").value = p.description || "";
+        document.getElementById("p-uploader").value = p.uploader || "";
+        document.getElementById("p-date").value = p.date || "";
+        document.getElementById("p-content").value = p.content || "";
+        document.getElementById("p-form-title").textContent = "编辑文章";
+        document.getElementById("p-reset").style.display = "inline-block";
+        document.getElementById("p-msg").textContent = "";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      function resetPostForm() {
+        editingPost = null;
+        ["p-title","p-slug","p-desc","p-uploader","p-date","p-content"].forEach(function (id) { document.getElementById(id).value = ""; });
+        document.getElementById("p-form-title").textContent = "新增文章";
+        document.getElementById("p-reset").style.display = "none";
+        document.getElementById("p-msg").textContent = "";
+      }
+      document.getElementById("p-reset").addEventListener("click", resetPostForm);
+      document.getElementById("p-save").addEventListener("click", function () {
+        var msg = document.getElementById("p-msg");
         var title = document.getElementById("p-title").value.trim();
         var slug = document.getElementById("p-slug").value.trim();
-        var msg = document.getElementById("p-msg");
         if (!title || !slug) { msg.className = "form-msg err"; msg.textContent = "标题和链接标识必填"; return; }
-        if (DB.getPost(slug)) { msg.className = "form-msg err"; msg.textContent = "这个链接标识已存在"; return; }
-        var list = DB.getPosts().slice();
-        list.push({
+        var obj = {
           slug: slug, title: title,
-          desc: document.getElementById("p-desc").value.trim(),
-          cover: "v" + ((list.length % 4) + 1),
-          uploader: document.getElementById("p-uploader").value.trim() || "站长",
+          description: document.getElementById("p-desc").value.trim(),
+          uploader: document.getElementById("p-uploader").value.trim(),
           date: document.getElementById("p-date").value || new Date().toISOString().slice(0, 10),
           content: document.getElementById("p-content").value || "<p>（正文待补充）</p>",
+        };
+        msg.className = "form-msg"; msg.textContent = "保存中…";
+        DB.savePost(obj).then(function () {
+          msg.className = "form-msg ok"; msg.textContent = "已保存";
+          resetPostForm(); loadPosts();
+        }).catch(function (e) {
+          msg.className = "form-msg err"; msg.textContent = e.message || "保存失败";
         });
-        DB.setPosts(list);
-        ["p-title","p-slug","p-desc","p-content"].forEach(function (id) { document.getElementById(id).value = ""; });
-        msg.className = "form-msg ok"; msg.textContent = "已添加";
-        renderPosts();
       });
 
-      /* ---- 下载 ---- */
-      function renderDl() {
-        var list = DB.getDownloads();
+      /* ================= 下载 ================= */
+      var allDl = [];
+      function loadDl() {
         var box = document.getElementById("dl-list");
-        box.innerHTML = list.map(function (d) {
-          return '<div class="admin-row">' +
-            '<div class="grow"><div class="t">' + DB.esc(d.name) + '</div>' +
-            '<div class="s">' + DB.fmtSize(d.size || 0) + ' · ' + DB.esc(d.date || "") + '</div></div>' +
-            '<button class="mini danger" data-del-dl="' + DB.esc(d.id) + '">删除</button>' +
-          '</div>';
-        }).join("") || '<p class="note">还没有下载项。</p>';
-        box.querySelectorAll("[data-del-dl]").forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            DB.setDownloads(DB.getDownloads().filter(function (d) { return d.id !== btn.dataset.delDl; }));
-            renderDl();
+        box.innerHTML = '<p class="note">加载中…</p>';
+        DB.getDownloads().then(function (list) {
+          allDl = list;
+          box.innerHTML = list.map(function (d) {
+            return '<div class="admin-row">' +
+              '<div class="grow"><div class="t">' + DB.esc(d.name) + '</div>' +
+              '<div class="s">' + DB.fmtSize(d.size || 0) + ' · ' + DB.esc(d.date || "") + '</div></div>' +
+              '<button class="mini" data-edit-dl="' + DB.esc(d.id) + '">编辑</button>' +
+              '<button class="mini danger" data-del-dl="' + DB.esc(d.id) + '">删除</button>' +
+            '</div>';
+          }).join("") || '<p class="note">还没有下载项。</p>';
+          box.querySelectorAll("[data-del-dl]").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              if (!confirm("删除这个下载项？")) return;
+              DB.deleteDownload(btn.dataset.delDl).then(loadDl).catch(function (e) { alert(e.message); });
+            });
           });
+          box.querySelectorAll("[data-edit-dl]").forEach(function (btn) {
+            btn.addEventListener("click", function () { editDl(btn.dataset.editDl); });
+          });
+        }).catch(function (e) {
+          box.innerHTML = '<p class="note" style="color:var(--danger)">加载失败：' + DB.esc(e.message) + '</p>';
         });
       }
-      document.getElementById("d-add").addEventListener("click", function () {
-        var name = document.getElementById("d-name").value.trim();
+      function editDl(id) {
+        var d = allDl.filter(function (x) { return x.id === id; })[0];
+        if (!d) return;
+        editingDl = id;
+        document.getElementById("d-name").value = d.name || "";
+        document.getElementById("d-size").value = d.size || "";
+        document.getElementById("d-desc").value = d.description || "";
+        document.getElementById("d-href").value = d.href || "";
+        document.getElementById("d-date").value = d.date || "";
+        document.getElementById("d-form-title").textContent = "编辑下载项";
+        document.getElementById("d-reset").style.display = "inline-block";
+        document.getElementById("d-msg").textContent = "";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      function resetDlForm() {
+        editingDl = null;
+        ["d-name","d-size","d-desc","d-href","d-date"].forEach(function (id) { document.getElementById(id).value = ""; });
+        document.getElementById("d-form-title").textContent = "新增下载项";
+        document.getElementById("d-reset").style.display = "none";
+        document.getElementById("d-msg").textContent = "";
+      }
+      document.getElementById("d-reset").addEventListener("click", resetDlForm);
+      document.getElementById("d-save").addEventListener("click", function () {
         var msg = document.getElementById("d-msg");
+        var name = document.getElementById("d-name").value.trim();
         if (!name) { msg.className = "form-msg err"; msg.textContent = "名称必填"; return; }
-        var list = DB.getDownloads().slice();
-        list.push({
-          id: "dl-" + Date.now().toString(36),
+        var obj = {
+          id: editingDl || undefined,
           name: name,
           description: document.getElementById("d-desc").value.trim(),
           size: parseInt(document.getElementById("d-size").value, 10) || 0,
           href: document.getElementById("d-href").value.trim() || "#",
           date: document.getElementById("d-date").value || new Date().toISOString().slice(0, 10),
+        };
+        msg.className = "form-msg"; msg.textContent = "保存中…";
+        DB.saveDownload(obj).then(function () {
+          msg.className = "form-msg ok"; msg.textContent = "已保存";
+          resetDlForm(); loadDl();
+        }).catch(function (e) {
+          msg.className = "form-msg err"; msg.textContent = e.message || "保存失败";
         });
-        DB.setDownloads(list);
-        ["d-name","d-size","d-desc","d-href"].forEach(function (id) { document.getElementById(id).value = ""; });
-        msg.className = "form-msg ok"; msg.textContent = "已添加";
-        renderDl();
       });
 
-      /* ---- 数据 ---- */
-      function renderData() {
-        var fps = DB.getFootprints();
-        document.getElementById("fp-count").textContent = fps.length;
-        var fpBox = document.getElementById("fp-admin");
-        fpBox.innerHTML = fps.map(function (f) {
-          return '<div class="admin-row"><div class="grow"><div class="t">' + DB.esc(f.username) + '</div>' +
-            '<div class="s">' + DB.esc(f.message) + '</div></div>' +
-            '<button class="mini danger" data-del-fp="' + DB.esc(f.id) + '">删除</button></div>';
-        }).join("") || '<p class="note">还没有留言。</p>';
-        fpBox.querySelectorAll("[data-del-fp]").forEach(function (btn) {
-          btn.addEventListener("click", function () { DB.delFootprint(btn.dataset.delFp); renderData(); });
+      /* ================= 简介 ================= */
+      function loadAbout() {
+        DB.getSite().then(function (s) {
+          document.getElementById("about-html").value = (s.about && s.about.html) || "";
+        }).catch(function () {});
+      }
+      document.getElementById("about-save").addEventListener("click", function () {
+        var msg = document.getElementById("about-msg");
+        var html = document.getElementById("about-html").value;
+        msg.className = "form-msg"; msg.textContent = "保存中…";
+        DB.saveSite({ about: { html: html } }).then(function () {
+          msg.className = "form-msg ok"; msg.textContent = "已保存";
+        }).catch(function (e) {
+          msg.className = "form-msg err"; msg.textContent = e.message || "保存失败";
+        });
+      });
+
+      /* ================= 友链 ================= */
+      function friendRow(name, url, desc) {
+        var div = document.createElement("div");
+        div.className = "friend-row";
+        div.innerHTML =
+          '<input class="input" data-f="name" placeholder="名称" value="' + DB.esc(name || "") + '">' +
+          '<input class="input" data-f="url" placeholder="链接" value="' + DB.esc(url || "") + '">' +
+          '<input class="input" data-f="desc" placeholder="简介" value="' + DB.esc(desc || "") + '">' +
+          '<button class="mini danger" data-f="del">✕</button>';
+        div.querySelector('[data-f="del"]').addEventListener("click", function () { div.remove(); });
+        return div;
+      }
+      function loadFriends() {
+        DB.getSite().then(function (s) {
+          var box = document.getElementById("friend-list");
+          box.innerHTML = "";
+          (s.friends || []).forEach(function (f) { box.appendChild(friendRow(f.name, f.url, f.desc)); });
+        }).catch(function () {});
+      }
+      document.getElementById("friend-add").addEventListener("click", function () {
+        document.getElementById("friend-list").appendChild(friendRow("", "", ""));
+      });
+      document.getElementById("friend-save").addEventListener("click", function () {
+        var msg = document.getElementById("friend-msg");
+        var list = [];
+        document.querySelectorAll("#friend-list .friend-row").forEach(function (row) {
+          var name = row.querySelector('[data-f="name"]').value.trim();
+          var url = row.querySelector('[data-f="url"]').value.trim();
+          var desc = row.querySelector('[data-f="desc"]').value.trim();
+          if (name || url) list.push({ name: name, url: url, desc: desc });
+        });
+        msg.className = "form-msg"; msg.textContent = "保存中…";
+        DB.saveSite({ friends: list }).then(function () {
+          msg.className = "form-msg ok"; msg.textContent = "已保存";
+        }).catch(function (e) {
+          msg.className = "form-msg err"; msg.textContent = e.message || "保存失败";
+        });
+      });
+
+      /* ================= 留言 ================= */
+      function loadMessages() {
+        var box = document.getElementById("fp-admin");
+        box.innerHTML = '<p class="note">加载中…</p>';
+        DB.getFootprints().then(function (fps) {
+          document.getElementById("fp-count").textContent = fps.length;
+          box.innerHTML = fps.map(function (f) {
+            return '<div class="admin-row"><div class="grow"><div class="t">' + DB.esc(f.name) + '</div>' +
+              '<div class="s">' + DB.esc(f.text) + '</div></div>' +
+              '<button class="mini danger" data-del-fp="' + DB.esc(f.id) + '">删除</button></div>';
+          }).join("") || '<p class="note">还没有留言。</p>';
+          box.querySelectorAll("[data-del-fp]").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              if (!confirm("删除这条留言？")) return;
+              DB.delFootprint(btn.dataset.delFp).then(loadMessages).catch(function (e) { alert(e.message); });
+            });
+          });
+        }).catch(function (e) {
+          box.innerHTML = '<p class="note" style="color:var(--danger)">加载失败：' + DB.esc(e.message) + '</p>';
         });
       }
 
-      document.getElementById("reset-all").addEventListener("click", function () {
-        if (!confirm("确定清空本浏览器里所有改动（文章/下载/留言）？")) return;
-        Object.keys(DB.LS).forEach(function (k) { localStorage.removeItem(DB.LS[k]); });
-        renderPosts(); renderDl(); renderData();
-        alert("已恢复初始数据");
-      });
-
-      renderPosts();
-      renderDl();
-      renderData();
+      /* ================= 启动：判断是否已登录 ================= */
+      DB.me().then(function (authed) {
+        if (authed) enterAdmin(); else showLogin();
+      }).catch(function () { showLogin(); });
     });
   </script>
 </body>

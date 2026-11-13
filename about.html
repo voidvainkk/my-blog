@@ -11,18 +11,55 @@
     <aside id="sidebar"></aside>
     <main id="main">
       <h1>关于</h1>
-      <div class="prose">
-        <p>这里是我的个人小站，用来存放折腾记录、随笔和一些乱七八糟的想法。</p>
-        <h2>关于这个站</h2>
-        <p>用纯静态文件搭起来，托管在 Cloudflare Pages 上，绑了自己的域名。没有服务器，也没有数据库——能这么轻，就不折腾。</p>
-        <h2>关于我</h2>
-        <p>一个喜欢折腾、偶尔写点东西的普通人。想找我的话，点左下角的社交按钮。</p>
-        <blockquote>i'm the greatest trendsurfer</blockquote>
+      <div class="prose" id="about-body">
+        <p style="color:var(--muted)">加载中…</p>
+      </div>
+
+      <div id="friends-wrap" style="display:none;margin-top:2.5rem">
+        <h2 style="font-size:1.2rem;margin-bottom:1rem">友情链接</h2>
+        <div class="dl-grid" id="friends-list"></div>
       </div>
     </main>
   </div>
 
   <script src="assets/data.js"></script>
   <script src="assets/app.js"></script>
+  <script src="assets/effects.js"></script>
+  <script>
+    // 默认简介（后台没填时显示这段）
+    var DEFAULT_ABOUT =
+      '<p>这里是我的个人小站，用来存放折腾记录、随笔和一些乱七八糟的想法。</p>' +
+      '<h2>关于这个站</h2>' +
+      '<p>用纯静态页面搭起来，托管在 Cloudflare Pages 上，绑了自己的域名。后台用 Pages Functions + D1 数据库，轻量、免服务器。</p>' +
+      '<h2>关于我</h2>' +
+      '<p>一个喜欢折腾、偶尔写点东西的普通人。想找我的话，点左下角的社交按钮。</p>' +
+      '<blockquote>i\'m the greatest trendsurfer</blockquote>';
+
+    document.addEventListener("DOMContentLoaded", function () {
+      var body = document.getElementById("about-body");
+      DB.getSite().then(function (s) {
+        var html = (s.about && s.about.html) || "";
+        body.innerHTML = html.trim() ? html : DEFAULT_ABOUT;
+
+        var friends = s.friends || [];
+        if (friends.length) {
+          var wrap = document.getElementById("friends-wrap");
+          var list = document.getElementById("friends-list");
+          wrap.style.display = "block";
+          list.innerHTML = friends.map(function (f) {
+            var url = f.url || "#";
+            var name = DB.esc(f.name || f.url || "友链");
+            var desc = f.desc ? '<div class="dl-desc">' + DB.esc(f.desc) + '</div>' : '';
+            return '<a class="dl-card" href="' + DB.esc(url) + '" target="_blank" rel="noopener">' +
+              '<div class="dl-icon">🔗</div>' +
+              '<div class="dl-main"><div class="dl-name">' + name + '</div>' + desc + '</div>' +
+            '</a>';
+          }).join("");
+        }
+      }).catch(function () {
+        body.innerHTML = DEFAULT_ABOUT;
+      });
+    });
+  </script>
 </body>
 </html>
