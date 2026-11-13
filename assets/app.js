@@ -28,7 +28,7 @@
       ["微信", "your-id"],
       ["QQ", "your-qq"],
     ],
-    footer: "i'm the greatest trendsurfer",
+    footer: "从小我就发誓要杀掉比我忧郁的人 可至今我的剑从未出鞘",
   };
 
   /* ---------- 歌单：可选，填本地音频或在线链接 ----------

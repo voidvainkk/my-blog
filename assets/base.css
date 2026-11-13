@@ -66,6 +66,17 @@ body::before {
     radial-gradient(45% 40% at 100% 100%, rgba(31,111,235,0.16), transparent 70%);
 }
 
+/* 背景：蓝色电子雨（缓慢竖直下落），画在主内容之下、背景之上 */
+#rain {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.6;
+  mix-blend-mode: screen;
+  transition: opacity 0.6s ease;
+}
+
 /* ---------- 页面骨架 ---------- */
 
 .layout {
@@ -443,10 +454,50 @@ textarea.input { resize: vertical; }
 
 .site-footer {
   margin-top: auto;
-  padding-top: 2rem;
+  padding-top: 1.6rem;
   border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.82rem;
+  text-align: center;
+  letter-spacing: 0.06em;
+}
+.site-footer p {
+  margin: 0;
+  line-height: 1.7;
+}
+
+/* ---------- 页面切换过渡（站内跳转 / 前进后退 / 新加载） ---------- */
+/* 注意：这里只动 opacity，不动 transform —— 避免 body 变成 fixed 子元素的包含块，
+   让右下角音乐播放器 / 背景保持稳定 */
+@keyframes page-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+/* 支持 View Transitions 的浏览器：由下面 ::view-transition 接管，避免双层淡入导致闪白 */
+@supports not (view-transition-name: none) {
+  body {
+    animation: page-fade-in 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+  /* 离场淡出：点击站内链接时由 effects.js 加上 .page-leaving */
+  html.page-leaving body {
+    animation: none !important;
+    opacity: 0 !important;
+    transition: opacity 0.26s ease !important;
+  }
+}
+/* 支持 View Transitions 的浏览器：编辑默认的淡入淡出，加一层缩放位移 */
+::view-transition-old(root) {
+  animation: vt-out 0.32s ease both;
+}
+::view-transition-new(root) {
+  animation: vt-in 0.42s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+@keyframes vt-out {
+  to { opacity: 0; transform: scale(0.985); }
+}
+@keyframes vt-in {
+  from { opacity: 0; transform: scale(1.012); }
+  to   { opacity: 1; transform: none; }
 }
 
 /* ---------- 悬浮音乐播放器 ---------- */
@@ -651,6 +702,11 @@ aside > * { position: relative; z-index: 1; }
   .pixel-name::before, .pixel-name::after { animation: none !important; opacity: 0 !important; }
   .av.solo.has-img:hover img { animation: none !important; }
   .post-card::after, .dl-card::after { display: none !important; }
+  /* 新增：关掉页面切换 / 背景电子雨 */
+  body { animation: none !important; }
+  html.page-leaving body { opacity: 1 !important; transition: none !important; }
+  #rain { display: none !important; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
 }
 @media (pointer: coarse) {
   .post-card::after, .dl-card::after { display: none !important; }

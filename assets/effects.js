@@ -69,6 +69,36 @@
     }, 3000);
   }
 
+  /* ---------- 3) 站内跳转淡出（不支持 View Transitions 的浏览器兜底） ---------- */
+  function initPageFadeOut() {
+    if (reduce) return;
+    // 支持 View Transitions 的浏览器交给 ::view-transition 处理，避免双层
+    if (window.CSS && CSS.supports && CSS.supports("view-transition-name: none")) return;
+
+    document.addEventListener(
+      "click",
+      function (e) {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        var a = e.target && e.target.closest && e.target.closest("a[href]");
+        if (!a) return;
+        if (a.target && a.target !== "_self") return;
+        if (a.hasAttribute("download")) return;
+        var url = a.getAttribute("href");
+        if (!url || url.charAt(0) === "#") return;
+        if (/^(https?:)?\/\//i.test(url) || /^(mailto:|tel:|javascript:)/i.test(url)) return;
+        e.preventDefault();
+        document.documentElement.classList.add("page-leaving");
+        window.setTimeout(function () { location.href = url; }, 240);
+      },
+      false
+    );
+
+    // 从 bfcache 返回时清掉离场态，避免整页透明
+    window.addEventListener("pageshow", function () {
+      document.documentElement.classList.remove("page-leaving");
+    });
+  }
+
   /* ---------- 启动（延后一帧，等页面脚本把卡片渲染出来） ---------- */
   // 暴露给页面：异步渲染完内容后，页面再调一次即可给新元素加特效
   window.initSpotlight = initSpotlight;
@@ -78,6 +108,7 @@
     window.setTimeout(function () {
       try { initSpotlight(); } catch (e) {}
       try { initReveal(); } catch (e) {}
+      try { initPageFadeOut(); } catch (e) {}
       document.documentElement.classList.add("fx-ready");
     }, 0);
   });
