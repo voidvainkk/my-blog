@@ -43,11 +43,13 @@
     return s;
   }
 
-  function makeCol(i) {
+  function makeCol(i, initial) {
     var len = Math.floor(rand(6, 15));
+    // initial=true：首屏就把各列铺满整个高度，一进页面就看到雨在流；
+    // 否则（落出屏幕后重生）从屏幕上方落进来。
     return {
       x: i * colW + colW * 0.2,
-      y: rand(-H * 0.9, 0),
+      y: initial ? rand(-fontSize, H) : rand(-H * 0.9, 0),
       speed: rand(0.28, 0.85), // 像素/帧，慢
       len: len,
       chars: pickChars(len),
@@ -72,7 +74,7 @@
 
     var n = Math.max(1, Math.ceil(W / colW));
     cols = [];
-    for (var i = 0; i < n; i++) cols.push(makeCol(i));
+    for (var i = 0; i < n; i++) cols.push(makeCol(i, true));
   }
 
   function draw() {

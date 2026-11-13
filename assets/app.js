@@ -19,15 +19,7 @@
       ["留言板", "footprints.html"],
       ["管理", "admin.html"],
     ],
-    socials: [                                   // [平台名, 显示值]
-      ["GitHub", "voidvainkk"],
-      ["Bilibili", "yourname"],
-      ["SoundCloud", "yourname"],
-      ["Dizzylab", "-"],
-      ["Bandcamp", "yourname"],
-      ["微信", "your-id"],
-      ["QQ", "your-qq"],
-    ],
+    socials: [],                                 // [平台名, 显示值]；留空则不显示。以后要加就按 ["GitHub","你的ID"] 这样写
     footer: "从小我就发誓要杀掉比我忧郁的人 可至今我的剑从未出鞘",
   };
 
@@ -77,7 +69,7 @@
         (S.bigTitle ? '<div class="big-title">' + S.bigTitle + "</div>" : "") +
       "</div>" +
       "<nav>" + navHTML + "</nav>" +
-      '<div class="sidebar-social">' + socialHTML + "</div>";
+      (socialHTML ? '<div class="sidebar-social">' + socialHTML + "</div>" : "");
   }
 
   /* ---------- 页脚 ---------- */
