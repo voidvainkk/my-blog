@@ -359,6 +359,7 @@ main > h1::after {
   padding: 1.4rem;
 }
 .form-box h3 { font-size: 1rem; margin-bottom: 1rem; }
+.form-hint { font-size: 0.8rem; color: var(--muted); margin: -0.5rem 0 1rem; line-height: 1.6; }
 .form-group { margin-bottom: 0.8rem; }
 .form-group label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 0.3rem; }
 .input, textarea.input, select.input {

@@ -26,7 +26,9 @@ CREATE TABLE IF NOT EXISTS downloads (
   created_at  INTEGER NOT NULL
 );
 
--- 留言板（公开：谁都能留言）
+-- 留言板（公开：谁都能留言；但需管理员审核通过才在留言板展示）
+-- 审核状态存在 site_config 表的 key='fp_approved'（JSON 数组，存已通过展示的留言 id），
+-- 所以这张表本身不需要额外列，旧库也无需改结构。
 CREATE TABLE IF NOT EXISTS footprints (
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,             -- 昵称

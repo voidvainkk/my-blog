@@ -68,6 +68,16 @@
     var d = await req("/api/footprints");
     return d.footprints || [];
   }
+  async function getAllFootprints() {
+    var d = await req("/api/footprints?all=1");
+    return d.footprints || [];
+  }
+  async function setFootprintApproval(id, approved) {
+    return req("/api/footprints?id=" + encodeURIComponent(id), {
+      method: "PATCH",
+      body: { approved: !!approved },
+    });
+  }
   async function addFootprint(fp) {
     return req("/api/footprints", { method: "POST", body: fp });
   }
@@ -115,7 +125,7 @@
   window.DB = {
     getPosts, getPost, savePost, deletePost,
     getDownloads, saveDownload, deleteDownload,
-    getFootprints, addFootprint, delFootprint,
+    getFootprints, getAllFootprints, setFootprintApproval, addFootprint, delFootprint,
     getSite, saveSite,
     login, logout, me,
     esc, fmtSize, fmtDate,

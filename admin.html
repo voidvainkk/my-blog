@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>管理 - 我的博客</title>
-  <link rel="stylesheet" href="assets/base.css?v=b206ae30">
+  <link rel="stylesheet" href="assets/base.css?v=bd9baa81">
   <style>
     .admin-tabs { display:flex; gap:0.5rem; margin-bottom:1.25rem; flex-wrap:wrap; }
     .admin-tabs button { padding:0.45rem 1rem; border:1px solid var(--line); background:var(--surface); border-radius:8px; cursor:pointer; font:inherit; font-size:0.9rem; color:var(--muted); }
@@ -15,6 +15,9 @@
     .admin-row .s { color:var(--muted); font-size:0.78rem; word-break:break-all; }
     .mini { font-size:0.78rem; padding:0.3rem 0.7rem; border-radius:6px; cursor:pointer; border:1px solid var(--line); background:var(--bg); font:inherit; color:var(--text); }
     .mini.danger { color:var(--danger); }
+    .mini.on { color:var(--ok); border-color:var(--ok); }
+    .fp-badge { display:inline-block; font-size:0.7rem; padding:0.1rem 0.45rem; border-radius:5px; border:1px solid var(--line); color:var(--muted); vertical-align:middle; margin-right:0.3rem; }
+    .fp-badge.on { color:var(--ok); border-color:var(--ok); background:rgba(63,185,80,.1); }
     .panel { display:none; }
     .panel.active { display:block; }
     .note { color:var(--muted); font-size:0.82rem; margin-bottom:1rem; line-height:1.6; }
@@ -124,15 +127,16 @@
 
         <!-- 留言板 -->
         <div class="panel" id="panel-messages">
-          <h3 style="font-size:1rem;margin-bottom:0.6rem">留言（<span id="fp-count">0</span> 条）</h3>
+          <h3 style="font-size:1rem;margin-bottom:0.6rem">留言（共 <span id="fp-count">0</span> 条，待审核 <span id="fp-pending">0</span> 条）</h3>
+          <p class="note">新留言默认<b>待审核</b>，点「通过展示」后才会出现在前台留言板。</p>
           <div id="fp-admin"></div>
         </div>
       </div>
     </main>
   </div>
 
-  <script src="assets/data.js?v=8db9c394"></script>
-  <script src="assets/demo-data.js?v=6902711b"></script>
+  <script src="assets/data.js?v=f166baa7"></script>
+  <script src="assets/demo-data.js?v=80761783"></script>
   <script src="assets/app.js?v=15a8f6a7"></script>
   <script src="assets/effects.js?v=8a369b22"></script>
   <script src="assets/rain.js?v=43384340"></script>
@@ -385,13 +389,37 @@
       function loadMessages() {
         var box = document.getElementById("fp-admin");
         box.innerHTML = '<p class="note">加载中…</p>';
-        DB.getFootprints().then(function (fps) {
+        DB.getAllFootprints().then(function (fps) {
           document.getElementById("fp-count").textContent = fps.length;
+          var pending = fps.filter(function (f) { return !f.approved; }).length;
+          document.getElementById("fp-pending").textContent = pending;
           box.innerHTML = fps.map(function (f) {
-            return '<div class="admin-row"><div class="grow"><div class="t">' + DB.esc(f.name) + '</div>' +
+            var ok = !!f.approved;
+            var badge = ok
+              ? '<span class="fp-badge on">展示中</span>'
+              : '<span class="fp-badge">待审核</span>';
+            var toggle = ok
+              ? '<button class="mini" data-unfp="' + DB.esc(f.id) + '">取消展示</button>'
+              : '<button class="mini on" data-appfp="' + DB.esc(f.id) + '">通过展示</button>';
+            return '<div class="admin-row">' +
+              '<div class="grow"><div class="t">' + badge + ' ' + DB.esc(f.name) + '</div>' +
               '<div class="s">' + DB.esc(f.text) + '</div></div>' +
+              toggle +
               '<button class="mini danger" data-del-fp="' + DB.esc(f.id) + '">删除</button></div>';
           }).join("") || '<p class="note">还没有留言。</p>';
+
+          box.querySelectorAll("[data-appfp]").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              btn.disabled = true;
+              DB.setFootprintApproval(btn.dataset.appfp, true).then(loadMessages).catch(function (e) { alert(e.message); btn.disabled = false; });
+            });
+          });
+          box.querySelectorAll("[data-unfp]").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              btn.disabled = true;
+              DB.setFootprintApproval(btn.dataset.unfp, false).then(loadMessages).catch(function (e) { alert(e.message); btn.disabled = false; });
+            });
+          });
           box.querySelectorAll("[data-del-fp]").forEach(function (btn) {
             btn.addEventListener("click", function () {
               if (!confirm("删除这条留言？")) return;

@@ -56,6 +56,7 @@
       text: "本地预览里的演示留言，线上留言会保存到数据库。",
       color: "#58a6ff",
       avatar: null,
+      approved: 1,
       created_at: 1794552445766,
     },
   ];
@@ -106,6 +107,10 @@
     getFootprints: function () {
       return delay(DEMO_FOOTPRINTS.slice());
     },
+    getAllFootprints: function () {
+      return delay(DEMO_FOOTPRINTS.slice());
+    },
+    setFootprintApproval: readonly,
     getSite: function () {
       return delay(DEMO_SITE);
     },
