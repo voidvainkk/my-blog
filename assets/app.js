@@ -1,6 +1,6 @@
 /* ============================================================
-   app.js — 全站共享：左侧栏 / 页脚 / 音乐播放器 / 社交弹窗
-   要改站点信息、导航、社交账号、歌单，改下面 SITE 和 SONGS 即可
+   app.js — 全站共享：左侧栏 / 页脚 / 社交弹窗
+   要改站点信息、导航、社交账号，改下面 SITE 即可
    ============================================================ */
 
 (function () {
@@ -30,11 +30,6 @@
     ],
     footer: "从小我就发誓要杀掉比我忧郁的人 可至今我的剑从未出鞘",
   };
-
-  /* ---------- 歌单：可选，填本地音频或在线链接 ----------
-     例：{ name: "曲名", artist: "作者", src: "assets/songs/xxx.mp3" }
-  */
-  window.SONGS = [];
 
   var S = window.SITE;
 
@@ -124,96 +119,11 @@
     });
   }
 
-  /* ---------- 音乐播放器 ---------- */
-  function renderMusic() {
-    var wrap = document.createElement("div");
-    wrap.className = "music-player";
-    wrap.id = "music-player";
-    wrap.innerHTML =
-      '<div class="mp-head">' +
-        '<span id="music-header">音乐播放器</span>' +
-        '<button id="music-toggle">展开</button>' +
-      "</div>" +
-      '<div class="mp-body" id="music-body">' +
-        '<div class="mp-now">' +
-          '<div class="mp-cover">🎵</div>' +
-          "<div style=\"flex:1;min-width:0\">" +
-            '<div id="music-title">未在播放</div>' +
-            '<div id="music-artist">--</div>' +
-          "</div>" +
-        "</div>" +
-        '<audio id="audio-player" controls></audio>' +
-        '<div class="mp-list" id="playlist"></div>' +
-      "</div>";
-    document.body.appendChild(wrap);
-
-    var audio = wrap.querySelector("#audio-player");
-    var titleEl = wrap.querySelector("#music-title");
-    var artistEl = wrap.querySelector("#music-artist");
-    var toggle = wrap.querySelector("#music-toggle");
-    var body = wrap.querySelector("#music-body");
-    var listEl = wrap.querySelector("#playlist");
-    var headerEl = wrap.querySelector("#music-header");
-    var songs = window.SONGS || [];
-
-    audio.volume = 0.5;
-
-    function renderList() {
-      if (!songs.length) {
-        listEl.innerHTML =
-          '<p style="color:var(--muted);font-size:0.72rem;text-align:center;padding:0.6rem 0;">暂无音乐</p>';
-        return;
-      }
-      listEl.innerHTML = songs
-        .map(function (s, i) {
-          return (
-            '<div class="pl-item" data-idx="' + i + '">' +
-              '<span class="pl-num">' + (i + 1) + "</span>" +
-              '<span class="pl-name">' + s.name + "</span>" +
-              (s.artist ? '<span class="pl-num">' + s.artist + "</span>" : "") +
-            "</div>"
-          );
-        })
-        .join("");
-      listEl.querySelectorAll(".pl-item").forEach(function (row) {
-        row.addEventListener("click", function () {
-          play(parseInt(row.dataset.idx, 10));
-        });
-      });
-    }
-
-    function play(i) {
-      var s = songs[i];
-      if (!s) return;
-      audio.src = s.src;
-      titleEl.textContent = s.name;
-      artistEl.textContent = s.artist || "";
-      headerEl.textContent = s.artist ? s.name + " - " + s.artist : s.name;
-      listEl.querySelectorAll(".pl-item").forEach(function (r, k) {
-        r.classList.toggle("playing", k === i);
-      });
-      audio.play().catch(function () {});
-    }
-
-    toggle.addEventListener("click", function () {
-      var open = body.style.display === "block";
-      body.style.display = open ? "none" : "block";
-      toggle.textContent = open ? "展开" : "收起";
-    });
-
-    audio.addEventListener("ended", function () {
-      titleEl.textContent = "播放完毕";
-      headerEl.textContent = "音乐播放器";
-    });
-
-    renderList();
-  }
 
   /* ---------- 启动 ---------- */
   document.addEventListener("DOMContentLoaded", function () {
     renderSidebar();
     renderFooter();
     renderModal();
-    renderMusic();
   });
 })();

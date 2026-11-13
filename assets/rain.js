@@ -88,9 +88,11 @@
         var t = 1 - k / c.len;
         var ch = c.chars.charAt(k % c.chars.length);
         if (k === 0) {
-          ctx.fillStyle = "rgba(196,228,255,0.95)"; // 头部偏白蓝
+          ctx.fillStyle = "rgba(214,238,255,1)"; // 头部偏白蓝，最亮
         } else {
-          ctx.fillStyle = "rgba(88,166,255," + (t * 0.72).toFixed(3) + ")";
+          // 拖尾：整体更亮、衰减更慢，中段仍清晰可见
+          var a = Math.max(0.12, t * 0.95);
+          ctx.fillStyle = "rgba(122,192,255," + a.toFixed(3) + ")";
         }
         ctx.fillText(ch, c.x, y);
       }
